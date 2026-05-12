@@ -47,6 +47,11 @@ const useMatchmakingStore = create((set, get) => ({
         const newTime = state.searchTime + 1;
         set({ searchTime: newTime });
 
+        // Periodic polling to match waiting players who joined earlier
+        if (newTime % 3 === 0 && state.isSearching) {
+          get().tryFindMatch(userId, department, eloRating, data.id, data.joined_at);
+        }
+
         // Bot fallback after timeout
         if (newTime >= MATCH_CONFIG.BOT_SEARCH_TIMEOUT) {
           get().spawnBot(userId);
@@ -77,7 +82,7 @@ const useMatchmakingStore = create((set, get) => ({
       set({ queueChannel: channel });
 
       // Also try to find a match immediately
-      get().tryFindMatch(userId, department, eloRating, data.id);
+      get().tryFindMatch(userId, department, eloRating, data.id, data.joined_at);
     } catch (error) {
       set({ isSearching: false, error: error.message });
     }
@@ -85,28 +90,32 @@ const useMatchmakingStore = create((set, get) => ({
 
   /**
    * Try to find a compatible opponent in the queue.
+   * Restricts matching direction to prevent concurrent split-brain room creation.
    */
-  tryFindMatch: async (userId, department, eloRating, queueId) => {
+  tryFindMatch: async (userId, department, eloRating, queueId, joinedAt) => {
+    if (!joinedAt) return;
     try {
-      // Look for opponents: same department + ELO within 200 first
+      // Look for opponents who joined EARLIER than us: same department + ELO within 200 first
       let { data: opponents } = await supabase
         .from('matchmaking_queue')
         .select('*')
         .eq('status', 'waiting')
         .eq('department', department)
         .neq('user_id', userId)
+        .lt('joined_at', joinedAt)
         .gte('elo_rating', eloRating - 200)
         .lte('elo_rating', eloRating + 200)
         .order('joined_at', { ascending: true })
         .limit(1);
 
-      // If no close match, widen search
+      // If no close match, widen search to any opponent who joined earlier
       if (!opponents || opponents.length === 0) {
         const { data: widerOpponents } = await supabase
           .from('matchmaking_queue')
           .select('*')
           .eq('status', 'waiting')
           .neq('user_id', userId)
+          .lt('joined_at', joinedAt)
           .order('joined_at', { ascending: true })
           .limit(1);
         opponents = widerOpponents;
@@ -116,7 +125,7 @@ const useMatchmakingStore = create((set, get) => ({
         const opponent = opponents[0];
         const battleId = generateId();
 
-        // Create the battle
+        // Create the single source-of-truth battle row
         const { error: battleError } = await supabase.from('battles').insert({
           id: battleId,
           player_a: userId,
@@ -126,7 +135,7 @@ const useMatchmakingStore = create((set, get) => ({
 
         if (battleError) throw battleError;
 
-        // Update both queue entries
+        // Update both queue entries to point to this identical battleId
         await supabase
           .from('matchmaking_queue')
           .update({ status: 'matched', matched_with: opponent.user_id, battle_id: battleId })

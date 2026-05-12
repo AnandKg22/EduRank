@@ -28,6 +28,7 @@ export default function BattlePage() {
   const status = useGameStore((s) => s.status);
   const result = useGameStore((s) => s.result);
   const questions = useGameStore((s) => s.questions);
+  const currentQuestion = useGameStore((s) => s.currentQuestion);
   const myAnswerSubmitted = useGameStore((s) => s.myAnswerSubmitted);
   const opponentAnswerSubmitted = useGameStore((s) => s.opponentAnswerSubmitted);
   const initBattle = useGameStore((s) => s.initBattle);
@@ -168,35 +169,41 @@ export default function BattlePage() {
       if (answer && sendAnswer) {
         sendAnswer(answer);
       }
-
-      // Bot: simulate bot answer after a random delay
-      if (botMatch) {
-        const botDelay = 2000 + Math.random() * 8000;
-        setTimeout(() => {
-          const gameState = useGameStore.getState();
-          if (!gameState.opponentAnswerSubmitted) {
-            const q = gameState.questions[gameState.currentQuestion];
-            const botCorrectChance = 0.65;
-            const botAnswer = Math.random() < botCorrectChance
-              ? q.correct_answer
-              : Math.floor(Math.random() * 4);
-            const botTimeRemaining = 5 + Math.random() * 10;
-            const isCorrect = botAnswer === q.correct_answer;
-            const points = isCorrect ? 100 + Math.round(botTimeRemaining * 3) : 0;
-
-            useGameStore.getState().syncOpponentAnswer({
-              questionIndex: gameState.currentQuestion,
-              answerIndex: botAnswer,
-              isCorrect,
-              points,
-              timeRemaining: botTimeRemaining,
-            });
-          }
-        }, botDelay);
-      }
     },
-    [submitAnswer, sendAnswer, botMatch]
+    [submitAnswer, sendAnswer]
   );
+
+  // ── Auto Bot Answer Hook ──
+  useEffect(() => {
+    if (botMatch && status === BATTLE_STATUS.ACTIVE && !opponentAnswerSubmitted) {
+      // Schedule bot answer between 1.5s and 5s
+      const botDelay = 1500 + Math.random() * 3500;
+      const timer = setTimeout(() => {
+        const gameState = useGameStore.getState();
+        if (!gameState.opponentAnswerSubmitted && gameState.status === BATTLE_STATUS.ACTIVE) {
+          const q = gameState.questions[gameState.currentQuestion];
+          if (!q) return;
+          const botCorrectChance = 0.70;
+          const botAnswer = Math.random() < botCorrectChance
+            ? q.correct_answer
+            : Math.floor(Math.random() * 4);
+          const botTimeRemaining = Math.max(1, 15 - Math.floor(botDelay / 1000));
+          const isCorrect = botAnswer === q.correct_answer;
+          const points = isCorrect ? 100 + Math.round(botTimeRemaining * 3) : 0;
+
+          useGameStore.getState().syncOpponentAnswer({
+            questionIndex: gameState.currentQuestion,
+            answerIndex: botAnswer,
+            isCorrect,
+            points,
+            timeRemaining: botTimeRemaining,
+          });
+        }
+      }, botDelay);
+
+      return () => clearTimeout(timer);
+    }
+  }, [botMatch, status, currentQuestion, opponentAnswerSubmitted]);
 
   // ── Progress to next question when both players have answered ──
   useEffect(() => {

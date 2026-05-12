@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import useGameStore from '../../stores/useGameStore';
+import useMatchmakingStore from '../../stores/useMatchmakingStore';
 import AnimatedNumber from '../ui/AnimatedNumber';
 import Button from '../ui/Button';
 
@@ -20,7 +21,8 @@ export default function BattleResults() {
   const opponentScore = useGameStore((s) => s.opponentScore);
   const eloDelta = useGameStore((s) => s.eloDelta);
   const opponentName = useGameStore((s) => s.opponentName);
-  const reset = useGameStore((s) => s.reset);
+  const resetGame = useGameStore((s) => s.reset);
+  const resetMatchmaking = useMatchmakingStore((s) => s.reset);
   const navigate = useNavigate();
 
   if (!result) return null;
@@ -28,14 +30,15 @@ export default function BattleResults() {
   const config = resultConfig[result] || resultConfig.draw;
 
   const handleDashboard = () => {
-    reset();
+    resetGame();
+    resetMatchmaking();
     navigate('/');
   };
 
   const handlePlayAgain = () => {
-    reset();
+    resetGame();
+    resetMatchmaking();
     navigate('/');
-    // User can click Find Duel again from dashboard
   };
 
   return (

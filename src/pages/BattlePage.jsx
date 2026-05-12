@@ -37,17 +37,20 @@ export default function BattlePage() {
   const setEloDelta = useGameStore((s) => s.setEloDelta);
   const botMatch = useGameStore((s) => s.botMatch);
 
-  const { sendAnswer, sendReady, channel } = useBattleChannel(battleId);
+  const { sendAnswer, sendReady, channel, opponentConnected } = useBattleChannel(battleId);
   const initRef = useRef(false);
-  const [bothConnected, setBothConnected] = useState(botMatch || false);
+  const [readyAcknowledged, setReadyAcknowledged] = useState(false);
 
-  // Synchronize player connection handshake via broadcast
+  // Derived state: instantly true if playing bot, native presence triggers, or ready message received
+  const bothConnected = botMatch || opponentConnected || readyAcknowledged;
+
+  // Synchronize player connection handshake fallback via broadcast
   useEffect(() => {
-    if (!channel || botMatch) return;
+    if (!channel || botMatch || bothConnected) return;
 
     const handleReady = (payload) => {
       if (payload.payload?.userId && payload.payload.userId !== user?.id) {
-        setBothConnected(true);
+        setReadyAcknowledged(true);
       }
     };
 

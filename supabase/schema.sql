@@ -131,7 +131,7 @@ CREATE POLICY "Questions are viewable by authenticated" ON questions FOR SELECT 
 CREATE POLICY "Queue is viewable by authenticated" ON matchmaking_queue FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Users can join queue" ON matchmaking_queue FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can leave queue" ON matchmaking_queue FOR DELETE TO authenticated USING (auth.uid() = user_id);
-CREATE POLICY "Users can update own queue entry" ON matchmaking_queue FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Anyone can update queue entries" ON matchmaking_queue FOR UPDATE TO authenticated USING (true);
 
 -- Battles: participants can read, update own
 CREATE POLICY "Battles viewable by participants" ON battles FOR SELECT TO authenticated USING (auth.uid() = player_a OR auth.uid() = player_b);

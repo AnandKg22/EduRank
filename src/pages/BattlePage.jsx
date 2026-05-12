@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useGameStore from '../stores/useGameStore';
 import useAuthStore from '../stores/useAuthStore';
@@ -37,8 +37,31 @@ export default function BattlePage() {
   const setEloDelta = useGameStore((s) => s.setEloDelta);
   const botMatch = useGameStore((s) => s.botMatch);
 
-  const { sendAnswer, sendReady } = useBattleChannel(battleId);
+  const { sendAnswer, sendReady, channel } = useBattleChannel(battleId);
   const initRef = useRef(false);
+  const [bothConnected, setBothConnected] = useState(botMatch || false);
+
+  // Synchronize player connection handshake via broadcast
+  useEffect(() => {
+    if (!channel || botMatch) return;
+
+    const handleReady = (payload) => {
+      if (payload.payload?.userId && payload.payload.userId !== user?.id) {
+        setBothConnected(true);
+      }
+    };
+
+    channel.on('broadcast', { event: 'ready' }, handleReady);
+
+    // Periodically broadcast our ready presence to the opponent
+    const interval = setInterval(() => {
+      if (!bothConnected && sendReady) {
+        sendReady();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [channel, botMatch, bothConnected, sendReady, user?.id]);
 
   // ── Initialize Battle ──
   useEffect(() => {
@@ -158,7 +181,7 @@ export default function BattlePage() {
   }, [myAnswerSubmitted, submitAnswer, sendAnswer]);
 
   const { reset: resetTimer } = useCountdown(
-    status === BATTLE_STATUS.ACTIVE && !myAnswerSubmitted,
+    bothConnected && status === BATTLE_STATUS.ACTIVE && !myAnswerSubmitted,
     handleTimeUp
   );
 
@@ -287,6 +310,28 @@ export default function BattlePage() {
           <Spinner size="xl" />
           <p className="text-text-secondary animate-pulse font-[Orbitron]">
             Preparing Battle Arena...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Connection Handshake view ──
+  if (!bothConnected) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-center space-y-4 glass p-8 rounded-2xl max-w-md mx-auto border border-primary/20">
+          <div className="relative w-20 h-20 mx-auto">
+            <div className="absolute inset-0 rounded-full border-2 border-accent animate-ping opacity-75" />
+            <div className="absolute inset-0 flex items-center justify-center text-3xl animate-pulse">
+              ⚡
+            </div>
+          </div>
+          <h3 className="text-xl font-bold font-[Orbitron] text-glow text-text-primary">
+            Awaiting Opponent Connection
+          </h3>
+          <p className="text-sm text-text-secondary">
+            Synchronizing live stream with <span className="text-primary font-semibold">{opponent?.username || 'Opponent'}</span>...
           </p>
         </div>
       </div>

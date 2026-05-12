@@ -52,6 +52,22 @@ const useMatchmakingStore = create((set, get) => ({
           get().tryFindMatch(userId, department, eloRating, data.id, data.joined_at);
         }
 
+        // Indestructible database fallback polling: check if an opponent created a battle with us as player_b
+        if (newTime % 2 === 0 && state.isSearching) {
+          supabase
+            .from('battles')
+            .select('id, player_a')
+            .eq('player_b', userId)
+            .eq('status', 'preparing')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .then(({ data: activeBattles }) => {
+              if (activeBattles && activeBattles.length > 0) {
+                get().onMatchFound(activeBattles[0].id, activeBattles[0].player_a);
+              }
+            });
+        }
+
         // Bot fallback after timeout
         if (newTime >= MATCH_CONFIG.BOT_SEARCH_TIMEOUT) {
           get().spawnBot(userId);

@@ -3,6 +3,7 @@ import { RecentMatches } from '../features/dashboard/components/RecentMatches';
 import { EloChart } from '../features/dashboard/components/EloChart';
 import FindMatchButton from '../features/matchmaking/components/FindMatchButton';
 import MatchmakingOverlay from '../features/matchmaking/components/MatchmakingOverlay';
+import { AdminManagementPanel } from '../features/dashboard/components/AdminManagementPanel';
 
 /**
  * Dashboard Landing Module
@@ -16,6 +17,9 @@ export const DashboardPage = () => {
         <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
         <p className="text-sm text-text-secondary mt-1">Your combat overview</p>
       </div>
+
+      {/* Admin Operations Gateway */}
+      <AdminManagementPanel />
 
       {/* Stats */}
       <StatsCards />

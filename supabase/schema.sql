@@ -211,10 +211,17 @@ ALTER TABLE match_history ENABLE ROW LEVEL SECURITY;
 
 -- ── Organizations ──
 CREATE POLICY "Organizations viewable by authenticated" ON organizations FOR SELECT TO authenticated USING (true);
+CREATE POLICY "SuperAdmins insert organizations" ON organizations FOR INSERT TO authenticated WITH CHECK ((SELECT role FROM profiles WHERE id = auth.uid()) = 'SuperAdmin');
+CREATE POLICY "SuperAdmins update organizations" ON organizations FOR UPDATE TO authenticated USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'SuperAdmin');
 
 -- ── Profiles ──
 CREATE POLICY "Profiles viewable by everyone" ON profiles FOR SELECT USING (true);
 CREATE POLICY "Users update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "SuperAdmins update any profile" ON profiles FOR UPDATE TO authenticated USING ((SELECT role FROM profiles WHERE id = auth.uid()) = 'SuperAdmin');
+CREATE POLICY "TenantAdmins update tenant profiles" ON profiles FOR UPDATE TO authenticated USING (
+  organization_id = (SELECT organization_id FROM profiles WHERE id = auth.uid()) AND
+  (SELECT role FROM profiles WHERE id = auth.uid()) = 'TenantAdmin'
+);
 
 -- ── Questions ──
 CREATE POLICY "Questions viewable by tenant" ON questions FOR SELECT TO authenticated 

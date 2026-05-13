@@ -69,6 +69,12 @@ export const useAuthStore = create((set, get) => ({
       set({ profile: data });
     } catch (err) {
       console.error('Profile network retrieval failure:', err);
+      // Auto-heal stale desktop session cache if profile record was dropped during database reset
+      if (err.code === 'PGRST116') {
+        console.warn('Orphaned session detected. Self-healing token cache...');
+        await supabase.auth.signOut();
+        set({ user: null, profile: null, session: null });
+      }
     }
   },
 

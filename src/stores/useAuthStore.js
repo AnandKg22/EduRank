@@ -1,35 +1,46 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../services/supabase';
 
 /**
- * Auth Store — Manages authentication state, user session, and profile data.
+ * Enterprise Auth Store
+ * Manages identity, Multi-Tenant scoping, RBAC metadata, and active session telemetry.
  */
-const useAuthStore = create((set, get) => ({
+export const useAuthStore = create((set, get) => ({
   // ── State ──
   user: null,
   profile: null,
   session: null,
-  loading: true,
+  isLoading: true,
+  loading: true, // Legacy compatibility mapping for non-refactored imports
   error: null,
 
   // ── Actions ──
 
   /**
-   * Initialize auth listener. Call once at app root.
+   * Initializes real-time persistent session listening.
    */
-  initialize: () => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      set({ session, user: session?.user ?? null, loading: false });
-      if (session?.user) {
-        get().fetchProfile(session.user.id);
+  initialize: async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      
+      const user = session?.user ?? null;
+      set({ session, user, isLoading: false, loading: false });
+      
+      if (user) {
+        await get().fetchProfile(user.id);
       }
-    });
+    } catch (err) {
+      console.error('Session initialization failure:', err);
+      set({ isLoading: false, loading: false, error: err.message });
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        set({ session, user: session?.user ?? null });
-        if (session?.user) {
-          get().fetchProfile(session.user.id);
+      async (_event, session) => {
+        const user = session?.user ?? null;
+        set({ session, user });
+        if (user) {
+          await get().fetchProfile(user.id);
         } else {
           set({ profile: null });
         }
@@ -40,66 +51,69 @@ const useAuthStore = create((set, get) => ({
   },
 
   /**
-   * Fetch user profile from profiles table.
+   * Fetches tenant-bound user profile securely.
    */
   fetchProfile: async (userId) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, organizations(name, branding_color)')
         .eq('id', userId)
         .single();
 
       if (error) throw error;
       set({ profile: data });
-    } catch (error) {
-      console.error('Error fetching profile:', error);
+    } catch (err) {
+      console.error('Profile network retrieval failure:', err);
     }
   },
 
   /**
-   * Sign in with email and password.
+   * Standard Password Authentication
    */
   signIn: async (email, password) => {
-    set({ loading: true, error: null });
+    set({ isLoading: true, loading: true, error: null });
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) throw error;
-      set({ loading: false });
+      set({ isLoading: false, loading: false });
       return { success: true };
-    } catch (error) {
-      set({ loading: false, error: error.message });
-      return { success: false, error: error.message };
+    } catch (err) {
+      set({ isLoading: false, loading: false, error: err.message });
+      return { success: false, error: err.message };
     }
   },
 
   /**
-   * Sign up with email, password, and profile metadata.
+   * Identity Provisioning with Scoped Tenant Mapping
    */
-  signUp: async (email, password, username, department) => {
-    set({ loading: true, error: null });
+  signUp: async (email, password, username, department, role = 'Student', organizationId = null) => {
+    set({ isLoading: true, loading: true, error: null });
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const metadata = { username, department, role };
+      if (organizationId) metadata.organization_id = organizationId;
+
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { username, department },
+          data: metadata,
         },
       });
       if (error) throw error;
-      set({ loading: false });
+      set({ isLoading: false, loading: false });
       return { success: true };
-    } catch (error) {
-      set({ loading: false, error: error.message });
-      return { success: false, error: error.message };
+    } catch (err) {
+      set({ isLoading: false, loading: false, error: err.message });
+      return { success: false, error: err.message };
     }
   },
 
   /**
-   * Sign out.
+   * Terminates active user session securely.
    */
   signOut: async () => {
     await supabase.auth.signOut();
@@ -107,7 +121,7 @@ const useAuthStore = create((set, get) => ({
   },
 
   /**
-   * Update profile fields.
+   * Persists modified profile fields.
    */
   updateProfile: async (updates) => {
     const userId = get().user?.id;
@@ -117,16 +131,18 @@ const useAuthStore = create((set, get) => ({
         .from('profiles')
         .update(updates)
         .eq('id', userId)
-        .select()
+        .select('*, organizations(name, branding_color)')
         .single();
+      
       if (error) throw error;
       set({ profile: data });
-    } catch (error) {
-      console.error('Error updating profile:', error);
+    } catch (err) {
+      console.error('Profile database modification failure:', err);
     }
   },
 
   clearError: () => set({ error: null }),
 }));
 
+// Default export wrapper mapping to maintain runtime compatibility during phased refactor
 export default useAuthStore;

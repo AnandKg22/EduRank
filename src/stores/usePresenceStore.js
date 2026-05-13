@@ -2,9 +2,10 @@ import { create } from 'zustand';
 import { ACTIVITY_STATUS } from '../lib/constants';
 
 /**
- * Presence Store — Manages online users and their activity statuses.
+ * Presence Telemetry Store
+ * Governs cross-channel live activity state indicators.
  */
-const usePresenceStore = create((set) => ({
+export const usePresenceStore = create((set) => ({
   // ── State ──
   onlineUsers: [],
   myStatus: ACTIVITY_STATUS.IDLE,

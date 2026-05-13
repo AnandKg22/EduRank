@@ -1,22 +1,23 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import useGameStore from '../stores/useGameStore';
-import useAuthStore from '../stores/useAuthStore';
-import useMatchmakingStore from '../stores/useMatchmakingStore';
-import usePresenceStore from '../stores/usePresenceStore';
-import useBattleChannel from '../hooks/useBattleChannel';
-import useCountdown from '../hooks/useCountdown';
-import { supabase } from '../lib/supabaseClient';
+import { useGameStore } from '../stores/useGameStore';
+import { useAuthStore } from '../stores/useAuthStore';
+import { useMatchmakingStore } from '../stores/useMatchmakingStore';
+import { usePresenceStore } from '../stores/usePresenceStore';
+import { useBattleChannel } from '../hooks/useBattleChannel';
+import { useCountdown } from '../hooks/useCountdown';
+import { supabase } from '../services/supabase';
 import { calculateElo } from '../lib/utils';
 import { ACTIVITY_STATUS, BATTLE_STATUS, MATCH_CONFIG } from '../lib/constants';
-import BattleArena from '../components/battle/BattleArena';
-import BattleResults from '../components/battle/BattleResults';
+import { BattleArena } from '../features/battle/components/BattleArena';
+import { BattleResults } from '../features/battle/components/BattleResults';
 import Spinner from '../components/ui/Spinner';
 
 /**
- * BattlePage — Orchestrates the entire battle lifecycle.
+ * Enterprise Distributed Combat Lifecycle Shell
+ * Coordinates low-latency multi-tenant Broadcast streams with atomic persistence boundaries.
  */
-export default function BattlePage() {
+export const BattlePage = () => {
   const { battleId } = useParams();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -35,18 +36,16 @@ export default function BattlePage() {
   const submitAnswer = useGameStore((s) => s.submitAnswer);
   const nextQuestion = useGameStore((s) => s.nextQuestion);
   const setEloDelta = useGameStore((s) => s.setEloDelta);
-  const botMatch = useGameStore((s) => s.botMatch);
+  const isBotMatch = useGameStore((s) => s.isBotMatch);
 
   const { sendAnswer, sendReady, channel, opponentConnected } = useBattleChannel(battleId);
   const initRef = useRef(false);
   const [readyAcknowledged, setReadyAcknowledged] = useState(false);
 
-  // Derived state: instantly true if playing bot, native presence triggers, or ready message received
-  const bothConnected = botMatch || opponentConnected || readyAcknowledged;
+  const bothConnected = isBotMatch || opponentConnected || readyAcknowledged;
 
-  // Synchronize player connection handshake fallback via broadcast
   useEffect(() => {
-    if (!channel || botMatch || bothConnected) return;
+    if (!channel || isBotMatch || bothConnected) return;
 
     const handleReady = (payload) => {
       if (payload.payload?.userId && payload.payload.userId !== user?.id) {
@@ -56,7 +55,6 @@ export default function BattlePage() {
 
     channel.on('broadcast', { event: 'ready' }, handleReady);
 
-    // Periodically broadcast our ready presence to the opponent
     const interval = setInterval(() => {
       if (!bothConnected && sendReady) {
         sendReady();
@@ -64,16 +62,16 @@ export default function BattlePage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [channel, botMatch, bothConnected, sendReady, user?.id]);
+  }, [channel, isBotMatch, bothConnected, sendReady, user?.id]);
 
-  // ── Initialize Battle ──
   useEffect(() => {
     if (!battleId || !user || !opponent || initRef.current) return;
     initRef.current = true;
 
     const loadBattle = async () => {
       try {
-        // Determine if host (player_a)
+        const resolvedOrgId = profile?.organization_id;
+
         const { data: battle } = await supabase
           .from('battles')
           .select('*')
@@ -88,14 +86,15 @@ export default function BattlePage() {
         const isHost = battle.player_a === user.id;
 
         if (isHost && (!battle.questions || battle.questions.length === 0)) {
-          // Host generates questions
-          const { data: qs } = await supabase
-            .from('questions')
-            .select('*')
-            .limit(200);
+          // Select questions strictly filtered/scoped to the user's organization tier mapping
+          let query = supabase.from('questions').select('*');
+          if (resolvedOrgId) {
+            query = query.eq('organization_id', resolvedOrgId);
+          }
+
+          const { data: qs } = await query.limit(200);
 
           if (qs && qs.length > 0) {
-            // Shuffle and pick
             const shuffled = qs.sort(() => Math.random() - 0.5);
             const selected = shuffled.slice(0, MATCH_CONFIG.QUESTIONS_PER_MATCH);
 
@@ -114,11 +113,10 @@ export default function BattlePage() {
               isHost: true,
               opponentName: opponent.username,
               opponentTier: opponent.elo_rating,
-              botMatch: opponent.isBot || false,
+              isBotMatch: opponent.isBot || false,
             });
           }
         } else {
-          // Joiner — wait for questions or they are already there
           const waitForQuestions = async () => {
             let retries = 0;
             while (retries < 20) {
@@ -135,14 +133,13 @@ export default function BattlePage() {
                   isHost: false,
                   opponentName: opponent.username,
                   opponentTier: opponent.elo_rating,
-                  botMatch: opponent.isBot || false,
+                  isBotMatch: opponent.isBot || false,
                 });
                 return;
               }
               retries++;
               await new Promise((r) => setTimeout(r, 500));
             }
-            // Timeout — go back
             navigate('/');
           };
 
@@ -153,14 +150,14 @@ export default function BattlePage() {
               isHost: false,
               opponentName: opponent.username,
               opponentTier: opponent.elo_rating,
-              botMatch: opponent.isBot || false,
+              isBotMatch: opponent.isBot || false,
             });
           } else {
             waitForQuestions();
           }
         }
       } catch (err) {
-        console.error('Battle init error:', err);
+        console.error('Distributed arena handshake initialization failure:', err);
         navigate('/');
       }
     };
@@ -171,12 +168,11 @@ export default function BattlePage() {
     return () => {
       updateStatus(ACTIVITY_STATUS.IDLE);
     };
-  }, [battleId, user?.id]);
+  }, [battleId, user?.id, profile?.organization_id]);
 
-  // ── Handle auto-submit on timer expiry ──
   const handleTimeUp = useCallback(() => {
     if (!myAnswerSubmitted) {
-      const answer = submitAnswer(-1); // -1 = no answer (wrong)
+      const answer = submitAnswer(-1); 
       if (answer && sendAnswer) {
         sendAnswer(answer);
       }
@@ -188,7 +184,6 @@ export default function BattlePage() {
     handleTimeUp
   );
 
-  // ── Handle answer submission ──
   const handleAnswer = useCallback(
     (answerIndex) => {
       const answer = submitAnswer(answerIndex);
@@ -199,10 +194,8 @@ export default function BattlePage() {
     [submitAnswer, sendAnswer]
   );
 
-  // ── Auto Bot Answer Hook ──
   useEffect(() => {
-    if (botMatch && status === BATTLE_STATUS.ACTIVE && !opponentAnswerSubmitted) {
-      // Schedule bot answer between 1.5s and 5s
+    if (isBotMatch && status === BATTLE_STATUS.ACTIVE && !opponentAnswerSubmitted) {
       const botDelay = 1500 + Math.random() * 3500;
       const timer = setTimeout(() => {
         const gameState = useGameStore.getState();
@@ -229,9 +222,8 @@ export default function BattlePage() {
 
       return () => clearTimeout(timer);
     }
-  }, [botMatch, status, currentQuestion, opponentAnswerSubmitted]);
+  }, [isBotMatch, status, currentQuestion, opponentAnswerSubmitted]);
 
-  // ── Progress to next question when both players have answered ──
   useEffect(() => {
     if (myAnswerSubmitted && opponentAnswerSubmitted && status === BATTLE_STATUS.ACTIVE) {
       const timer = setTimeout(() => {
@@ -239,12 +231,11 @@ export default function BattlePage() {
         if (hasMore) {
           resetTimer();
         }
-      }, 1500); // Brief pause to show answer results
+      }, 1500); 
       return () => clearTimeout(timer);
     }
   }, [myAnswerSubmitted, opponentAnswerSubmitted, status]);
 
-  // ── Finalize battle on finish ──
   useEffect(() => {
     if (result && user && profile) {
       const finalize = async () => {
@@ -252,11 +243,10 @@ export default function BattlePage() {
         const opponentElo = opponent?.elo_rating || 1000;
         const score = result === 'win' || result === 'forfeit_win' ? 1 : result === 'draw' ? 0.5 : 0;
         const { deltaA } = calculateElo(profile.elo_rating, opponentElo, score);
-        const actualDelta = botMatch ? Math.round(deltaA * 0.5) : deltaA; // Reduced ELO for bot matches
+        const actualDelta = isBotMatch ? Math.round(deltaA * 0.5) : deltaA; 
 
         setEloDelta(actualDelta);
 
-        // Update profile
         const newElo = Math.max(0, profile.elo_rating + actualDelta);
         await supabase
           .from('profiles')
@@ -269,11 +259,10 @@ export default function BattlePage() {
           })
           .eq('id', user.id);
 
-        // Update tier
         await supabase.rpc('update_tier', { p_user_id: user.id, p_elo: newElo });
 
-        // Write match history
         await supabase.from('match_history').insert({
+          organization_id: profile.organization_id,
           battle_id: battleId,
           user_id: user.id,
           opponent_id: opponent?.id || null,
@@ -284,7 +273,6 @@ export default function BattlePage() {
           opponent_score: gameState.opponentScore,
         });
 
-        // Update battle record
         await supabase
           .from('battles')
           .update({
@@ -297,7 +285,6 @@ export default function BattlePage() {
           })
           .eq('id', battleId);
 
-        // Refresh profile
         fetchProfile(user.id);
       };
 
@@ -305,13 +292,12 @@ export default function BattlePage() {
     }
   }, [result]);
 
-  // ── Loading state ──
   if (!questions.length || status === null) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center space-y-4">
           <Spinner size="xl" />
-          <p className="text-text-secondary animate-pulse font-[Orbitron]">
+          <p className="text-text-secondary animate-pulse font-display">
             Preparing Battle Arena...
           </p>
         </div>
@@ -319,7 +305,6 @@ export default function BattlePage() {
     );
   }
 
-  // ── Connection Handshake view ──
   if (!bothConnected) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -330,7 +315,7 @@ export default function BattlePage() {
               ⚡
             </div>
           </div>
-          <h3 className="text-xl font-bold font-[Orbitron] text-glow text-text-primary">
+          <h3 className="text-xl font-bold font-display text-glow text-text-primary">
             Awaiting Opponent Connection
           </h3>
           <p className="text-sm text-text-secondary">
@@ -341,15 +326,15 @@ export default function BattlePage() {
     );
   }
 
-  // ── Results screen ──
   if (status === BATTLE_STATUS.FINISHED || status === BATTLE_STATUS.FORFEITED) {
     return <BattleResults />;
   }
 
-  // ── Active battle ──
   return (
     <div className="bg-gradient-battle min-h-[calc(100vh-theme(spacing.16)-theme(spacing.12))]">
       <BattleArena onAnswer={handleAnswer} />
     </div>
   );
-}
+};
+
+export default BattlePage;

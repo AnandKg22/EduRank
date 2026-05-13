@@ -3,9 +3,10 @@ import { MATCH_CONFIG, BATTLE_STATUS } from '../lib/constants';
 import { calculateAnswerPoints } from '../lib/utils';
 
 /**
- * Game Store — Manages active battle state, scores, and question progression.
+ * Enterprise Game Engine Store
+ * Controls deterministic client telemetry arrays and real-time state syncing.
  */
-const useGameStore = create((set, get) => ({
+export const useGameStore = create((set, get) => ({
   // ── State ──
   battleId: null,
   questions: [],
@@ -15,22 +16,21 @@ const useGameStore = create((set, get) => ({
   myAnswers: [],
   opponentAnswers: [],
   timeRemaining: MATCH_CONFIG.SECONDS_PER_QUESTION,
-  status: null, // preparing | active | finished | forfeited
-  result: null, // win | loss | draw | forfeit_win
+  status: null, 
+  result: null, 
   eloDelta: 0,
   myAnswerSubmitted: false,
   opponentAnswerSubmitted: false,
   isHost: false,
   opponentName: '',
   opponentTier: '',
-  botMatch: false,
+  isBotMatch: false,
+  botMatch: false, // Legacy compatibility alias
 
   // ── Actions ──
 
-  /**
-   * Initialize a new battle.
-   */
-  initBattle: ({ battleId, questions, isHost, opponentName, opponentTier, botMatch }) => {
+  initBattle: ({ battleId, questions, isHost, opponentName, opponentTier, botMatch, isBotMatch }) => {
+    const resolvedBotStatus = isBotMatch ?? botMatch ?? false;
     set({
       battleId,
       questions,
@@ -48,13 +48,11 @@ const useGameStore = create((set, get) => ({
       isHost,
       opponentName,
       opponentTier,
-      botMatch: botMatch || false,
+      isBotMatch: resolvedBotStatus,
+      botMatch: resolvedBotStatus,
     });
   },
 
-  /**
-   * Submit the player's answer for the current question.
-   */
   submitAnswer: (answerIndex) => {
     const state = get();
     if (state.myAnswerSubmitted) return null;
@@ -80,9 +78,6 @@ const useGameStore = create((set, get) => ({
     return answer;
   },
 
-  /**
-   * Record the opponent's answer (received via broadcast).
-   */
   syncOpponentAnswer: (answer) => {
     const state = get();
     set({
@@ -92,15 +87,11 @@ const useGameStore = create((set, get) => ({
     });
   },
 
-  /**
-   * Move to the next question. Called after both players have answered.
-   */
   nextQuestion: () => {
     const state = get();
     const next = state.currentQuestion + 1;
 
     if (next >= state.questions.length) {
-      // Battle finished
       const result =
         state.myScore > state.opponentScore
           ? 'win'
@@ -108,7 +99,7 @@ const useGameStore = create((set, get) => ({
             ? 'loss'
             : 'draw';
       set({ status: BATTLE_STATUS.FINISHED, result });
-      return false; // no more questions
+      return false; 
     }
 
     set({
@@ -117,17 +108,11 @@ const useGameStore = create((set, get) => ({
       myAnswerSubmitted: false,
       opponentAnswerSubmitted: false,
     });
-    return true; // more questions
+    return true; 
   },
 
-  /**
-   * Set the time remaining (called by timer hook).
-   */
   setTimeRemaining: (time) => set({ timeRemaining: time }),
 
-  /**
-   * Handle forfeit — opponent disconnected.
-   */
   handleForfeit: () => {
     set({
       status: BATTLE_STATUS.FORFEITED,
@@ -135,14 +120,8 @@ const useGameStore = create((set, get) => ({
     });
   },
 
-  /**
-   * Set the ELO delta after finalization.
-   */
   setEloDelta: (delta) => set({ eloDelta: delta }),
 
-  /**
-   * Reset the game store.
-   */
   reset: () =>
     set({
       battleId: null,
@@ -161,6 +140,7 @@ const useGameStore = create((set, get) => ({
       isHost: false,
       opponentName: '',
       opponentTier: '',
+      isBotMatch: false,
       botMatch: false,
     }),
 }));

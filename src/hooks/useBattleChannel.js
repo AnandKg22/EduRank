@@ -1,15 +1,14 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import useGameStore from '../stores/useGameStore';
-import useAuthStore from '../stores/useAuthStore';
+import { supabase } from '../services/supabase';
+import { useGameStore } from '../stores/useGameStore';
+import { useAuthStore } from '../stores/useAuthStore';
 import { MATCH_CONFIG } from '../lib/constants';
 
 /**
- * useBattleChannel — Manages the real-time battle communication channel.
- * Handles Broadcast (answer exchange), Presence (sync/disconnect detection),
- * and dynamic connection state monitoring.
+ * Enterprise Battle Channel Transport Hook
+ * Governs bidirectional client Broadcast stream packets and distributed Presence state synchronization.
  */
-export default function useBattleChannel(battleId) {
+export const useBattleChannel = (battleId) => {
   const [channel, setChannel] = useState(null);
   const [opponentConnected, setOpponentConnected] = useState(false);
   const channelRef = useRef(null);
@@ -18,9 +17,6 @@ export default function useBattleChannel(battleId) {
   const syncOpponentAnswer = useGameStore((s) => s.syncOpponentAnswer);
   const handleForfeit = useGameStore((s) => s.handleForfeit);
 
-  /**
-   * Send an answer event to the opponent via Broadcast.
-   */
   const sendAnswer = useCallback(
     (answer) => {
       if (channelRef.current) {
@@ -34,9 +30,6 @@ export default function useBattleChannel(battleId) {
     [user?.id]
   );
 
-  /**
-   * Send a "ready" signal to synchronize battle start.
-   */
   const sendReady = useCallback(() => {
     if (channelRef.current) {
       channelRef.current.send({
@@ -47,9 +40,6 @@ export default function useBattleChannel(battleId) {
     }
   }, [user?.id]);
 
-  /**
-   * Send a "next_question" signal for question sync.
-   */
   const sendNextQuestion = useCallback(() => {
     if (channelRef.current) {
       channelRef.current.send({
@@ -103,14 +93,12 @@ export default function useBattleChannel(battleId) {
     });
 
     newChannel.on('presence', { event: 'leave' }, () => {
-      // Opponent left — start forfeit grace period
       if (forfeitTimerRef.current) clearTimeout(forfeitTimerRef.current);
       forfeitTimerRef.current = setTimeout(() => {
         handleForfeit();
       }, MATCH_CONFIG.FORFEIT_GRACE_PERIOD * 1000);
     });
 
-    // ── Subscribe and Track ──
     newChannel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         setChannel(newChannel);
@@ -126,4 +114,6 @@ export default function useBattleChannel(battleId) {
   }, [battleId, user?.id]);
 
   return { sendAnswer, sendReady, sendNextQuestion, channel, opponentConnected };
-}
+};
+
+export default useBattleChannel;

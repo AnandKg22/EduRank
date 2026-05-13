@@ -1,13 +1,12 @@
 import { useEffect, useRef, useCallback } from 'react';
-import useGameStore from '../stores/useGameStore';
+import { useGameStore } from '../stores/useGameStore';
 import { MATCH_CONFIG } from '../lib/constants';
 
 /**
- * useCountdown — Manages the per-question countdown timer.
- * Uses requestAnimationFrame for smooth visual updates.
- * Triggers onTimeUp callback when timer reaches 0.
+ * High-Performance RAF Countdown Hook
+ * Dispatches framerate-independent subsecond updates to leaf components.
  */
-export default function useCountdown(isActive, onTimeUp) {
+export const useCountdown = (isActive, onTimeUp) => {
   const rafRef = useRef(null);
   const startTimeRef = useRef(null);
   const setTimeRemaining = useGameStore((s) => s.setTimeRemaining);
@@ -58,4 +57,6 @@ export default function useCountdown(isActive, onTimeUp) {
   }, [isActive, start, stop]);
 
   return { reset, stop };
-}
+};
+
+export default useCountdown;

@@ -1,13 +1,14 @@
-import StatsCards from '../components/dashboard/StatsCards';
-import RecentMatches from '../components/dashboard/RecentMatches';
-import EloChart from '../components/dashboard/EloChart';
-import FindMatchButton from '../components/matchmaking/FindMatchButton';
-import MatchmakingOverlay from '../components/matchmaking/MatchmakingOverlay';
+import { StatsCards } from '../features/dashboard/components/StatsCards';
+import { RecentMatches } from '../features/dashboard/components/RecentMatches';
+import { EloChart } from '../features/dashboard/components/EloChart';
+import FindMatchButton from '../features/matchmaking/components/FindMatchButton';
+import MatchmakingOverlay from '../features/matchmaking/components/MatchmakingOverlay';
 
 /**
- * DashboardPage — Main landing page with stats, quick play, and match history.
+ * Dashboard Landing Module
+ * Incorporates isolated telemetry dashboards and combat quick-triggers.
  */
-export default function DashboardPage() {
+export const DashboardPage = () => {
   return (
     <div className="space-y-6">
       {/* Page Title */}
@@ -32,4 +33,6 @@ export default function DashboardPage() {
       <MatchmakingOverlay />
     </div>
   );
-}
+};
+
+export default DashboardPage;

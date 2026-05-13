@@ -1,12 +1,14 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../services/supabase';
 import { MATCH_CONFIG } from '../lib/constants';
 import { getRandomBot, generateId } from '../lib/utils';
+import { useAuthStore } from './useAuthStore';
 
 /**
- * Matchmaking Store — Manages queue state, opponent search, and bot fallback.
+ * Enterprise Matchmaking Telemetry Store
+ * Governs atomic multi-tenant connection handshakes and serverless queue states.
  */
-const useMatchmakingStore = create((set, get) => ({
+export const useMatchmakingStore = create((set, get) => ({
   // ── State ──
   isSearching: false,
   searchTime: 0,
@@ -19,16 +21,24 @@ const useMatchmakingStore = create((set, get) => ({
   // ── Actions ──
 
   /**
-   * Join the matchmaking queue.
+   * Joins the tenant-isolated matchmaking queue.
    */
-  joinQueue: async (userId, department, eloRating) => {
+  joinQueue: async (userId, department, eloRating, organizationId = null) => {
     set({ isSearching: true, searchTime: 0, error: null });
 
+    // Ensure organization scoping resolves safely
+    const resolvedOrgId = organizationId || useAuthStore.getState().profile?.organization_id;
+
+    if (!resolvedOrgId) {
+      set({ isSearching: false, error: 'Tenant scope resolution failure. Unable to queue.' });
+      return;
+    }
+
     try {
-      // Insert into queue
       const { data, error } = await supabase
         .from('matchmaking_queue')
         .insert({
+          organization_id: resolvedOrgId,
           user_id: userId,
           department,
           elo_rating: eloRating,
@@ -41,22 +51,20 @@ const useMatchmakingStore = create((set, get) => ({
 
       set({ queueEntryId: data.id });
 
-      // Start search timer
       const interval = setInterval(() => {
         const state = get();
         const newTime = state.searchTime + 1;
         set({ searchTime: newTime });
 
-        // Periodic polling to match waiting players who joined earlier
         if (newTime % 3 === 0 && state.isSearching) {
-          get().tryFindMatch(userId, department, eloRating, data.id, data.joined_at);
+          get().tryFindMatch(userId, department, eloRating, data.id, data.joined_at, resolvedOrgId);
         }
 
-        // Indestructible database fallback polling: check if an opponent created a battle with us as player_b
         if (newTime % 2 === 0 && state.isSearching) {
           supabase
             .from('battles')
             .select('id, player_a')
+            .eq('organization_id', resolvedOrgId)
             .eq('player_b', userId)
             .eq('status', 'preparing')
             .order('created_at', { ascending: false })
@@ -68,15 +76,13 @@ const useMatchmakingStore = create((set, get) => ({
             });
         }
 
-        // Bot fallback after timeout
         if (newTime >= MATCH_CONFIG.BOT_SEARCH_TIMEOUT) {
-          get().spawnBot(userId);
+          get().spawnBot(userId, resolvedOrgId);
         }
       }, 1000);
 
       set({ searchInterval: interval });
 
-      // Subscribe to queue changes for this entry
       const channel = supabase
         .channel(`queue-${data.id}`)
         .on(
@@ -97,24 +103,22 @@ const useMatchmakingStore = create((set, get) => ({
 
       set({ queueChannel: channel });
 
-      // Also try to find a match immediately
-      get().tryFindMatch(userId, department, eloRating, data.id, data.joined_at);
-    } catch (error) {
-      set({ isSearching: false, error: error.message });
+      get().tryFindMatch(userId, department, eloRating, data.id, data.joined_at, resolvedOrgId);
+    } catch (err) {
+      set({ isSearching: false, error: err.message });
     }
   },
 
   /**
-   * Try to find a compatible opponent in the queue.
-   * Restricts matching direction to prevent concurrent split-brain room creation.
+   * Evaluates atomic room assignment criteria to prevent concurrent race conditions.
    */
-  tryFindMatch: async (userId, department, eloRating, queueId, joinedAt) => {
-    if (!joinedAt) return;
+  tryFindMatch: async (userId, department, eloRating, queueId, joinedAt, organizationId) => {
+    if (!joinedAt || !organizationId) return;
     try {
-      // Look for opponents who joined EARLIER than us: same department + ELO within 200 first
       let { data: opponents } = await supabase
         .from('matchmaking_queue')
         .select('*')
+        .eq('organization_id', organizationId)
         .eq('status', 'waiting')
         .eq('department', department)
         .neq('user_id', userId)
@@ -124,11 +128,11 @@ const useMatchmakingStore = create((set, get) => ({
         .order('joined_at', { ascending: true })
         .limit(1);
 
-      // If no close match, widen search to any opponent who joined earlier
       if (!opponents || opponents.length === 0) {
         const { data: widerOpponents } = await supabase
           .from('matchmaking_queue')
           .select('*')
+          .eq('organization_id', organizationId)
           .eq('status', 'waiting')
           .neq('user_id', userId)
           .lt('joined_at', joinedAt)
@@ -141,9 +145,9 @@ const useMatchmakingStore = create((set, get) => ({
         const opponent = opponents[0];
         const battleId = generateId();
 
-        // Create the single source-of-truth battle row
         const { error: battleError } = await supabase.from('battles').insert({
           id: battleId,
+          organization_id: organizationId,
           player_a: userId,
           player_b: opponent.user_id,
           status: 'preparing',
@@ -151,7 +155,6 @@ const useMatchmakingStore = create((set, get) => ({
 
         if (battleError) throw battleError;
 
-        // Update both queue entries to point to this identical battleId
         await supabase
           .from('matchmaking_queue')
           .update({ status: 'matched', matched_with: opponent.user_id, battle_id: battleId })
@@ -164,24 +167,21 @@ const useMatchmakingStore = create((set, get) => ({
 
         get().onMatchFound(battleId, opponent.user_id);
       }
-    } catch (error) {
-      console.error('Match search error:', error);
+    } catch (err) {
+      console.error('Atomic query alignment failure:', err);
     }
   },
 
   /**
-   * Handle match found event.
+   * Resolves successful matchmaking peer states.
    */
   onMatchFound: async (battleId, opponentId) => {
     const state = get();
-
-    // Clear timer
     if (state.searchInterval) clearInterval(state.searchInterval);
 
-    // Fetch opponent profile
     const { data: opponentProfile } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, organizations(name, branding_color)')
       .eq('id', opponentId)
       .single();
 
@@ -194,20 +194,18 @@ const useMatchmakingStore = create((set, get) => ({
   },
 
   /**
-   * Spawn a bot match after timeout.
+   * Deploys resilient automated bot fallbacks.
    */
-  spawnBot: async (userId) => {
+  spawnBot: async (userId, organizationId) => {
     const state = get();
     if (!state.isSearching) return;
 
-    // Clear timer
     if (state.searchInterval) clearInterval(state.searchInterval);
 
     const bot = getRandomBot();
     const battleId = generateId();
 
     try {
-      // Remove from queue
       if (state.queueEntryId) {
         await supabase
           .from('matchmaking_queue')
@@ -215,9 +213,9 @@ const useMatchmakingStore = create((set, get) => ({
           .eq('id', state.queueEntryId);
       }
 
-      // Create bot battle
       const { error } = await supabase.from('battles').insert({
         id: battleId,
+        organization_id: organizationId || useAuthStore.getState().profile?.organization_id,
         player_a: userId,
         player_b: null,
         is_bot_match: true,
@@ -240,15 +238,12 @@ const useMatchmakingStore = create((set, get) => ({
         isSearching: false,
         searchInterval: null,
       });
-    } catch (error) {
-      console.error('Bot spawn error:', error);
-      set({ isSearching: false, error: error.message });
+    } catch (err) {
+      console.error('Bot instance deployment failure:', err);
+      set({ isSearching: false, error: err.message });
     }
   },
 
-  /**
-   * Leave the matchmaking queue.
-   */
   leaveQueue: async () => {
     const state = get();
     if (state.searchInterval) clearInterval(state.searchInterval);
@@ -275,9 +270,6 @@ const useMatchmakingStore = create((set, get) => ({
     });
   },
 
-  /**
-   * Full reset.
-   */
   reset: () => {
     const state = get();
     if (state.searchInterval) clearInterval(state.searchInterval);

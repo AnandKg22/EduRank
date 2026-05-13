@@ -1,33 +1,31 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../services/supabase';
 
 /**
- * useRealtimeData — Generic hook for subscribing to Supabase Postgres Changes.
- * Manages the full subscription lifecycle with automatic cleanup.
+ * Enterprise Realtime Postgres Changes Hook
+ * Implements persistent background state syncing scoped by B2B/RLS parameters.
  *
- * @param {string} table - Table name to listen to
- * @param {object} options - { select, filter, orderBy, ascending, event }
- * @returns {{ data: Array, loading: boolean, error: Error|null, refetch: Function }}
+ * @param {string} table - Postgres entity schema name.
+ * @param {object} options - Configuration overrides.
  */
-export default function useRealtimeData(table, options = {}) {
+export const useRealtimeData = (table, options = {}) => {
   const {
     select = '*',
-    filter = null,  // { column: 'user_id', value: '...' }
-    orderBy = null, // { column: 'created_at', ascending: false }
-    event = '*',    // INSERT | UPDATE | DELETE | *
+    filter = null,  
+    orderBy = null, 
+    event = '*',    
     limit = null,
   } = options;
 
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Build a stable filter key for dependency tracking
   const filterKey = filter ? `${filter.column}:${filter.value}` : 'none';
   const orderKey = orderBy ? `${orderBy.column}:${orderBy.ascending}` : 'none';
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    setIsLoading(true);
     try {
       let query = supabase.from(table).select(select);
 
@@ -47,16 +45,15 @@ export default function useRealtimeData(table, options = {}) {
       setData(result || []);
     } catch (err) {
       setError(err);
-      console.error(`useRealtimeData [${table}]:`, err);
+      console.error(`useRealtimeData failure [${table}]:`, err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, [table, select, filterKey, orderKey, limit]);
 
   useEffect(() => {
     fetchData();
 
-    // Subscribe to realtime changes
     const channelName = `realtime-${table}-${filterKey}-${Date.now()}`;
     const channelFilter = filter
       ? `${filter.column}=eq.${filter.value}`
@@ -96,5 +93,7 @@ export default function useRealtimeData(table, options = {}) {
     };
   }, [table, fetchData, event, filterKey]);
 
-  return { data, loading, error, refetch: fetchData };
-}
+  return { data, isLoading, loading: isLoading, error, refetch: fetchData };
+};
+
+export default useRealtimeData;

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import LeaderboardTable from '../components/leaderboard/LeaderboardTable';
-import DepartmentFilter from '../components/leaderboard/DepartmentFilter';
+import { LeaderboardTable } from '../features/leaderboard/components/LeaderboardTable';
+import { DepartmentFilter } from '../features/leaderboard/components/DepartmentFilter';
 
 /**
- * LeaderboardPage — Real-time ranked player leaderboard.
+ * Leaderboard Master Shell Module
+ * Coordinates filter controls with real-time ranking stream providers.
  */
-export default function LeaderboardPage() {
+export const LeaderboardPage = () => {
   const [department, setDepartment] = useState(null);
 
   return (
@@ -15,7 +16,7 @@ export default function LeaderboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-text-primary">🏆 Leaderboard</h1>
           <p className="text-sm text-text-secondary mt-1">
-            Real-time global rankings
+            Real-time multi-tenant rankings
           </p>
         </div>
         <DepartmentFilter value={department} onChange={setDepartment} />
@@ -25,4 +26,6 @@ export default function LeaderboardPage() {
       <LeaderboardTable department={department} />
     </div>
   );
-}
+};
+
+export default LeaderboardPage;

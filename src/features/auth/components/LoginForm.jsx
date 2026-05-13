@@ -15,15 +15,15 @@ export const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const signIn = useAuthStore((s) => s.signIn);
   const loading = useAuthStore((s) => s.isLoading);
-  const { showToast } = useToast();
+  const toast = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const result = await signIn(email, password);
     if (!result.success) {
-      showToast(result.error || 'Login verification failed.', 'error');
+      toast.error(result.error || 'Login verification failed.');
     } else {
-      showToast('Authentication cleared. Welcome back!', 'success');
+      toast.success('Authentication cleared. Welcome back!');
     }
   };
 

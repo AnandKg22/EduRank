@@ -18,21 +18,21 @@ export const RegisterForm = () => {
   const [department, setDepartment] = useState(DEPARTMENTS[0]);
   const signUp = useAuthStore((s) => s.signUp);
   const loading = useAuthStore((s) => s.isLoading);
-  const { showToast } = useToast();
+  const toast = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (username.trim().length < 3) {
-      showToast('Battle Tag must contain at least 3 display characters.', 'warning');
+      toast.warning('Battle Tag must contain at least 3 display characters.');
       return;
     }
     const result = await signUp(email.trim(), password, username.trim(), department);
     if (result.success) {
-      showToast('Profile configured successfully! Welcome aboard.', 'success');
+      toast.success('Profile configured successfully! Welcome aboard.');
       navigate('/login');
     } else {
-      showToast(result.error || 'Identity initialization failed.', 'error');
+      toast.error(result.error || 'Identity initialization failed.');
     }
   };
 

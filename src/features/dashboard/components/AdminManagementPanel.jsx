@@ -9,7 +9,7 @@ import { useToast } from '../../../components/ui/Toast';
  */
 export const AdminManagementPanel = () => {
   const profile = useAuthStore((s) => s.profile);
-  const { showToast } = useToast();
+  const toast = useToast();
 
   // ── States ──
   const [organizations, setOrganizations] = useState([]);
@@ -74,9 +74,9 @@ export const AdminManagementPanel = () => {
       if (error) throw error;
       setOrganizations((prev) => [...prev, data]);
       setOrgName('');
-      showToast('Institution registered successfully! 🏛️', 'success');
+      toast.success('Institution registered successfully! 🏛️');
     } catch (err) {
-      showToast(err.message, 'error');
+      toast.error(err.message);
     } finally {
       setCreatingOrg(false);
     }
@@ -105,10 +105,10 @@ export const AdminManagementPanel = () => {
         .eq('id', targetId);
 
       if (updateErr) throw updateErr;
-      showToast(`Elevated ${users[0].username} to TenantAdmin! 🛡️`, 'success');
+      toast.success(`Elevated ${users[0].username} to TenantAdmin! 🛡️`);
       setTargetUserAdmin('');
     } catch (err) {
-      showToast(err.message, 'error');
+      toast.error(err.message);
     } finally {
       setAssigningAdmin(false);
     }
@@ -140,10 +140,10 @@ export const AdminManagementPanel = () => {
         .eq('id', targetUser.id);
 
       if (updateErr) throw updateErr;
-      showToast(`Assigned Faculty status to ${targetUser.username}! 🎓`, 'success');
+      toast.success(`Assigned Faculty status to ${targetUser.username}! 🎓`);
       setTargetUserFaculty('');
     } catch (err) {
-      showToast(err.message, 'error');
+      toast.error(err.message);
     } finally {
       setAssigningFaculty(false);
     }
@@ -152,7 +152,7 @@ export const AdminManagementPanel = () => {
   const handleIngestQuestion = async (e) => {
     e.preventDefault();
     if (!questionText.trim() || !optA.trim() || !optB.trim() || !optC.trim() || !optD.trim()) {
-      showToast('Please complete all question option parameter fields.', 'error');
+      toast.error('Please complete all question option parameter fields.');
       return;
     }
     setIngestingQuestion(true);
@@ -170,7 +170,7 @@ export const AdminManagementPanel = () => {
       const { error } = await supabase.from('questions').insert([payload]);
       if (error) throw error;
 
-      showToast('Trivia challenge safely ingested into bank! 🧠', 'success');
+      toast.success('Trivia challenge safely ingested into bank! 🧠');
       setQuestionText('');
       setOptA('');
       setOptB('');
@@ -178,7 +178,7 @@ export const AdminManagementPanel = () => {
       setOptD('');
       setCorrectAnswer('0');
     } catch (err) {
-      showToast(err.message, 'error');
+      toast.error(err.message);
     } finally {
       setIngestingQuestion(false);
     }

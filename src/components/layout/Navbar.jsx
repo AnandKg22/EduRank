@@ -1,12 +1,11 @@
-import useAuthStore from '../../stores/useAuthStore';
-import usePresenceStore from '../../stores/usePresenceStore';
+import { useAuthStore } from '../../stores/useAuthStore';
 import { getTierFromRating } from '../../lib/utils';
-import OnlineCount from '../presence/OnlineCount';
+import { OnlineCount } from '../../features/presence/components/OnlineCount';
 
 /**
  * Navbar — Top navigation bar with user info, ELO, and online count.
  */
-export default function Navbar({ onMenuToggle }) {
+export const Navbar = ({ onMenuToggle }) => {
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
   const tier = profile ? getTierFromRating(profile.elo_rating) : null;
@@ -27,7 +26,7 @@ export default function Navbar({ onMenuToggle }) {
 
         <div className="flex items-center gap-2">
           <span className="text-2xl">⚡</span>
-          <h1 className="text-lg font-bold font-[Orbitron] bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          <h1 className="text-lg font-bold font-display text-primary">
             EduRank
           </h1>
         </div>
@@ -74,4 +73,6 @@ export default function Navbar({ onMenuToggle }) {
       </div>
     </header>
   );
-}
+};
+
+export default Navbar;

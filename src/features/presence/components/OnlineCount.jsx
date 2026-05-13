@@ -1,9 +1,9 @@
-import usePresenceStore from '../../stores/usePresenceStore';
+import { usePresenceStore } from '../../../stores/usePresenceStore';
 
 /**
  * OnlineCount — Displays the count of currently online users.
  */
-export default function OnlineCount() {
+export const OnlineCount = () => {
   const count = usePresenceStore((s) => s.onlineUsers.length);
 
   return (
@@ -14,4 +14,6 @@ export default function OnlineCount() {
       </span>
     </div>
   );
-}
+};
+
+export default OnlineCount;

@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import OnlineSidebar from '../presence/OnlineSidebar';
+import { OnlineSidebar } from '../../features/presence/components/OnlineSidebar';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: '🏠' },
@@ -11,7 +11,7 @@ const navItems = [
 /**
  * Sidebar — Navigation sidebar with route links and online users panel.
  */
-export default function Sidebar({ isOpen, onClose }) {
+export const Sidebar = ({ isOpen, onClose }) => {
   return (
     <>
       {/* Mobile Overlay */}
@@ -27,7 +27,7 @@ export default function Sidebar({ isOpen, onClose }) {
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
+      {/* Sidebar Core Container */}
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-40
@@ -37,14 +37,14 @@ export default function Sidebar({ isOpen, onClose }) {
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        {/* Logo area - mobile */}
+        {/* Mobile Header Branding */}
         <div className="h-16 flex items-center px-6 border-b border-surface-lighter/30 lg:hidden">
-          <span className="text-xl font-bold font-[Orbitron] bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          <span className="text-xl font-bold font-display text-primary">
             ⚡ EduRank
           </span>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation Items */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
             <NavLink
@@ -67,11 +67,13 @@ export default function Sidebar({ isOpen, onClose }) {
           ))}
         </nav>
 
-        {/* Online Users */}
+        {/* Online Presence Scope Panel */}
         <div className="border-t border-surface-lighter/30 p-3">
           <OnlineSidebar />
         </div>
       </aside>
     </>
   );
-}
+};
+
+export default Sidebar;

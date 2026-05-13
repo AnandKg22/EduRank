@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
-import { motion, useSpring, useTransform } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { useSpring } from 'framer-motion';
 
 /**
  * AnimatedNumber — Smoothly animates between number values.
  */
-export default function AnimatedNumber({
+export const AnimatedNumber = ({
   value,
   prefix = '',
   suffix = '',
   className = '',
   duration = 0.8,
-}) {
+}) => {
   const spring = useSpring(0, { duration: duration * 1000 });
   const [display, setDisplay] = useState(0);
 
@@ -32,4 +32,6 @@ export default function AnimatedNumber({
       {suffix}
     </span>
   );
-}
+};
+
+export default AnimatedNumber;

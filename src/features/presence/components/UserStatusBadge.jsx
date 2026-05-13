@@ -1,4 +1,4 @@
-import { ACTIVITY_STATUS } from '../../lib/constants';
+import { ACTIVITY_STATUS } from '../../../lib/constants';
 
 const statusConfig = {
   [ACTIVITY_STATUS.IDLE]: { color: 'bg-success', label: 'Online' },
@@ -9,7 +9,7 @@ const statusConfig = {
 /**
  * UserStatusBadge — Color-coded activity status indicator.
  */
-export default function UserStatusBadge({ status, showLabel = false }) {
+export const UserStatusBadge = ({ status, showLabel = false }) => {
   const config = statusConfig[status] || statusConfig[ACTIVITY_STATUS.IDLE];
 
   return (
@@ -20,4 +20,6 @@ export default function UserStatusBadge({ status, showLabel = false }) {
       )}
     </div>
   );
-}
+};
+
+export default UserStatusBadge;

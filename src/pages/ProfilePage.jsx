@@ -1,16 +1,15 @@
 import { motion } from 'framer-motion';
-import useAuthStore from '../stores/useAuthStore';
-import { getTierFromRating, getWinRate } from '../lib/utils';
-import RankBadge from '../components/dashboard/RankBadge';
-import RecentMatches from '../components/dashboard/RecentMatches';
-import EloChart from '../components/dashboard/EloChart';
-import Card from '../components/ui/Card';
-import AnimatedNumber from '../components/ui/AnimatedNumber';
+import { useAuthStore } from '../stores/useAuthStore';
+import { getTierFromRating } from '../lib/utils';
+import { RankBadge } from '../features/dashboard/components/RankBadge';
+import { RecentMatches } from '../features/dashboard/components/RecentMatches';
+import { EloChart } from '../features/dashboard/components/EloChart';
+import { AnimatedNumber } from '../components/ui/AnimatedNumber';
 
 /**
  * ProfilePage — User profile with full stats and match history.
  */
-export default function ProfilePage() {
+export const ProfilePage = () => {
   const profile = useAuthStore((s) => s.profile);
 
   if (!profile) return null;
@@ -22,13 +21,13 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      {/* Profile Header */}
+      {/* Profile Header Block */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="glass rounded-2xl p-8 text-center"
       >
-        {/* Avatar */}
+        {/* Glowing Badge Avatar */}
         <div
           className="w-24 h-24 rounded-full mx-auto flex items-center justify-center text-4xl font-bold mb-4"
           style={{
@@ -40,12 +39,12 @@ export default function ProfilePage() {
           {profile.username?.charAt(0)?.toUpperCase()}
         </div>
 
-        <h1 className="text-2xl font-bold font-[Orbitron] text-text-primary">
+        <h1 className="text-2xl font-bold font-display text-text-primary">
           {profile.username}
         </h1>
         <p className="text-sm text-text-secondary mt-1">{profile.department}</p>
 
-        {/* Quick Stats */}
+        {/* Dynamic Telemetry Stats Matrix */}
         <div className="grid grid-cols-4 gap-4 mt-6">
           {[
             { label: 'ELO', value: profile.elo_rating, color: tier.color },
@@ -55,7 +54,7 @@ export default function ProfilePage() {
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <p className="text-xs text-text-muted">{stat.label}</p>
-              <p className="text-xl font-bold font-[Orbitron]" style={{ color: stat.color }}>
+              <p className="text-xl font-bold font-display" style={{ color: stat.color }}>
                 <AnimatedNumber value={stat.value} suffix={stat.suffix || ''} />
               </p>
             </div>
@@ -63,14 +62,14 @@ export default function ProfilePage() {
         </div>
       </motion.div>
 
-      {/* Rank */}
+      {/* Embedded Telemetry Tracking Widgets */}
       <RankBadge elo={profile.elo_rating} />
 
-      {/* ELO Chart */}
       <EloChart />
 
-      {/* Match History */}
       <RecentMatches />
     </div>
   );
-}
+};
+
+export default ProfilePage;

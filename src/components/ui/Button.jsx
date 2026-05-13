@@ -22,7 +22,7 @@ const sizes = {
   xl: 'px-10 py-4 text-lg',
 };
 
-export default function Button({
+export const Button = ({
   children,
   variant = 'primary',
   size = 'md',
@@ -32,7 +32,7 @@ export default function Button({
   className = '',
   onClick,
   ...props
-}) {
+}) => {
   return (
     <motion.button
       whileHover={!disabled ? { scale: 1.02 } : {}}
@@ -75,4 +75,6 @@ export default function Button({
       {children}
     </motion.button>
   );
-}
+};
+
+export default Button;

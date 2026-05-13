@@ -1,34 +1,38 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import useAuthStore from '../../stores/useAuthStore';
-import { useToast } from '../ui/Toast';
-import { DEPARTMENTS } from '../../lib/constants';
-import Button from '../ui/Button';
+import { useAuthStore } from '../../../stores/useAuthStore';
+import { useToast } from '../../../components/ui/Toast';
+import { DEPARTMENTS } from '../../../lib/constants';
+import { Button } from '../../../components/ui/Button';
 
-export default function RegisterForm() {
+/**
+ * Enterprise Fighter Registration Form
+ * Provisions scoped multi-tenant claims arrays alongside metadata binding signatures.
+ */
+export const RegisterForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [department, setDepartment] = useState(DEPARTMENTS[0]);
   const signUp = useAuthStore((s) => s.signUp);
-  const loading = useAuthStore((s) => s.loading);
-  const toast = useToast();
+  const loading = useAuthStore((s) => s.isLoading);
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (username.length < 3) {
-      toast.warning('Username must be at least 3 characters');
+    if (username.trim().length < 3) {
+      showToast('Battle Tag must contain at least 3 display characters.', 'warning');
       return;
     }
-    const result = await signUp(email, password, username, department);
+    const result = await signUp(email.trim(), password, username.trim(), department);
     if (result.success) {
-      toast.success('Account created! Check your email to confirm.');
+      showToast('Profile configured successfully! Welcome aboard.', 'success');
       navigate('/login');
     } else {
-      toast.error(result.error || 'Registration failed');
+      showToast(result.error || 'Identity initialization failed.', 'error');
     }
   };
 
@@ -40,15 +44,15 @@ export default function RegisterForm() {
       onSubmit={handleSubmit}
       className="glass rounded-2xl p-8 w-full max-w-md"
     >
-      {/* Header */}
+      {/* Header Container */}
       <div className="text-center mb-7">
-        <h2 className="text-3xl font-bold font-[Orbitron] bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+        <h2 className="text-3xl font-bold font-display text-primary">
           Join EduRank
         </h2>
-        <p className="text-text-secondary mt-2 text-sm">Create your fighter profile</p>
+        <p className="text-text-secondary mt-2 text-sm">Create your combat identity</p>
       </div>
 
-      {/* Fields */}
+      {/* Inputs */}
       <div className="space-y-4">
         <div>
           <label htmlFor="register-username" className="block text-sm font-medium text-text-secondary mb-1.5">
@@ -63,14 +67,14 @@ export default function RegisterForm() {
             minLength={3}
             maxLength={20}
             autoComplete="username"
-            className="edu-input"
+            className="w-full bg-surface px-4 py-3 rounded-xl border border-surface-lighter text-sm text-text-primary focus:outline-hidden focus:border-primary"
             placeholder="xXCoder_ProXx"
           />
         </div>
 
         <div>
           <label htmlFor="register-email" className="block text-sm font-medium text-text-secondary mb-1.5">
-            Email
+            Email Identity
           </label>
           <input
             id="register-email"
@@ -79,14 +83,14 @@ export default function RegisterForm() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            className="edu-input"
+            className="w-full bg-surface px-4 py-3 rounded-xl border border-surface-lighter text-sm text-text-primary focus:outline-hidden focus:border-primary"
             placeholder="fighter@edurank.io"
           />
         </div>
 
         <div>
           <label htmlFor="register-password" className="block text-sm font-medium text-text-secondary mb-1.5">
-            Password
+            Password Signature
           </label>
           <div className="relative">
             <input
@@ -97,13 +101,13 @@ export default function RegisterForm() {
               required
               minLength={6}
               autoComplete="new-password"
-              className="edu-input pr-11"
+              className="w-full bg-surface px-4 py-3 rounded-xl border border-surface-lighter text-sm text-text-primary pr-11 focus:outline-hidden focus:border-primary"
               placeholder="••••••••"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition"
               tabIndex={-1}
             >
               {showPassword ? '🙈' : '👁️'}
@@ -113,44 +117,39 @@ export default function RegisterForm() {
 
         <div>
           <label htmlFor="register-department" className="block text-sm font-medium text-text-secondary mb-1.5">
-            Department
+            Academic Pillar (Department)
           </label>
-          <div className="relative">
-            <select
-              id="register-department"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              className="edu-input edu-select"
-            >
-              {DEPARTMENTS.map((dept) => (
-                <option key={dept} value={dept} className="bg-surface-light text-text-primary">
-                  {dept}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-muted">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
+          <select
+            id="register-department"
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
+            className="w-full bg-surface px-4 py-3 rounded-xl border border-surface-lighter text-sm text-text-primary focus:outline-hidden focus:border-primary appearance-none cursor-pointer"
+          >
+            {DEPARTMENTS.map((dept) => (
+              <option key={dept} value={dept} className="bg-surface-card text-text-primary">
+                {dept}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* Submit */}
+      {/* Trigger */}
       <div className="mt-7">
         <Button type="submit" fullWidth size="lg" loading={loading} id="register-btn">
           Create Fighter Profile
         </Button>
       </div>
 
-      {/* Link */}
+      {/* Redirection */}
       <p className="text-center text-sm text-text-secondary mt-5">
         Already a fighter?{' '}
-        <Link to="/login" className="text-primary hover:text-primary-light font-semibold transition-colors">
+        <Link to="/login" className="text-primary hover:text-primary-light font-semibold transition">
           Login
         </Link>
       </p>
     </motion.form>
   );
-}
+};
+
+export default RegisterForm;

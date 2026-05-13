@@ -3,13 +3,13 @@ import { Routes, Route } from 'react-router-dom';
 import { useAuthStore } from './stores/useAuthStore';
 
 // Layout
-import AppShell from './components/layout/AppShell';
+import { AppShell } from './components/layout/AppShell';
 import { ProtectedRoute } from './features/auth/components/ProtectedRoute';
 
 // Pages
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import DashboardPage from './pages/DashboardPage';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { DashboardPage } from './pages/DashboardPage';
 import BattlePage from './pages/BattlePage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import ProfilePage from './pages/ProfilePage';

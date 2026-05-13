@@ -1,10 +1,10 @@
-import usePresenceStore from '../../stores/usePresenceStore';
-import UserStatusBadge from './UserStatusBadge';
+import { usePresenceStore } from '../../../stores/usePresenceStore';
+import { UserStatusBadge } from './UserStatusBadge';
 
 /**
  * OnlineSidebar — Displays the list of currently online users.
  */
-export default function OnlineSidebar() {
+export const OnlineSidebar = () => {
   const onlineUsers = usePresenceStore((s) => s.onlineUsers);
 
   return (
@@ -40,4 +40,6 @@ export default function OnlineSidebar() {
       </div>
     </div>
   );
-}
+};
+
+export default OnlineSidebar;

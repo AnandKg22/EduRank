@@ -1,24 +1,24 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import Navbar from './Navbar';
-import Sidebar from './Sidebar';
+import { Navbar } from './Navbar';
+import { Sidebar } from './Sidebar';
 import usePresence from '../../hooks/usePresence';
 
 /**
  * AppShell — Main authenticated layout with sidebar + top nav + content area.
  */
-export default function AppShell() {
+export const AppShell = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Initialize presence tracking
+  // Initialize persistent online telemetry metrics tracking
   usePresence();
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface">
-      {/* Sidebar */}
+      {/* Dynamic Drawer Navigation Panel */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main Content */}
+      {/* Main Workspace Frame */}
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
 
@@ -30,4 +30,6 @@ export default function AppShell() {
       </div>
     </div>
   );
-}
+};
+
+export default AppShell;

@@ -62,7 +62,7 @@ export const RankBadge = ({ elo }) => {
 
           {!nextTier && (
             <p className="text-xs text-accent">
-              ✨ Maximum rank achieved! You are a Superconductor.
+              ✨ Maximum rank achieved! You are an Elite Diamond Champion.
             </p>
           )}
         </div>

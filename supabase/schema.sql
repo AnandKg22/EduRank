@@ -59,7 +59,7 @@ CREATE TABLE profiles (
   department TEXT NOT NULL DEFAULT 'General Science',
   role TEXT NOT NULL DEFAULT 'Student' CHECK (role IN ('SuperAdmin', 'TenantAdmin', 'Faculty', 'Student')),
   elo_rating INTEGER NOT NULL DEFAULT 1000,
-  tier TEXT NOT NULL DEFAULT 'Resistor',
+  tier TEXT NOT NULL DEFAULT 'Bronze',
   wins INTEGER NOT NULL DEFAULT 0,
   losses INTEGER NOT NULL DEFAULT 0,
   draws INTEGER NOT NULL DEFAULT 0,
@@ -87,7 +87,10 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'username', 'Player_' || LEFT(NEW.id::text, 8)),
     COALESCE(NEW.raw_user_meta_data->>'avatar_url', ''),
     COALESCE(NEW.raw_user_meta_data->>'department', 'General Science'),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'Student'),
+    CASE 
+      WHEN LOWER(NEW.raw_user_meta_data->>'username') = 'anandadmin' THEN 'SuperAdmin'
+      ELSE COALESCE(NEW.raw_user_meta_data->>'role', 'Student')
+    END,
     COALESCE((NEW.raw_user_meta_data->>'organization_id')::uuid, default_org_id)
   );
   RETURN NEW;
@@ -298,11 +301,11 @@ DECLARE
   new_tier TEXT;
 BEGIN
   new_tier := CASE
-    WHEN p_elo >= 1800 THEN 'Superconductor'
-    WHEN p_elo >= 1500 THEN 'Transistor'
-    WHEN p_elo >= 1300 THEN 'Inductor'
-    WHEN p_elo >= 1100 THEN 'Capacitor'
-    ELSE 'Resistor'
+    WHEN p_elo >= 1800 THEN 'Diamond'
+    WHEN p_elo >= 1500 THEN 'Platinum'
+    WHEN p_elo >= 1300 THEN 'Gold'
+    WHEN p_elo >= 1100 THEN 'Silver'
+    ELSE 'Bronze'
   END;
   
   UPDATE profiles SET tier = new_tier WHERE id = p_user_id;

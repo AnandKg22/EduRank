@@ -4,11 +4,11 @@
 
 // ── Tier Definitions ──
 export const TIERS = [
-  { name: 'Resistor',       min: 0,    max: 1099, color: '#cd7f32', label: 'Bronze',   icon: '⚡' },
-  { name: 'Capacitor',      min: 1100, max: 1299, color: '#c0c0c0', label: 'Silver',   icon: '🔋' },
-  { name: 'Inductor',       min: 1300, max: 1499, color: '#ffd700', label: 'Gold',     icon: '🧲' },
-  { name: 'Transistor',     min: 1500, max: 1799, color: '#e5e4e2', label: 'Platinum', icon: '💎' },
-  { name: 'Superconductor', min: 1800, max: 9999, color: '#00ffff', label: 'Elite',    icon: '🌟' },
+  { name: 'Bronze',   min: 0,    max: 1099, color: '#cd7f32', label: 'Bronze',   icon: '🥉' },
+  { name: 'Silver',   min: 1100, max: 1299, color: '#c0c0c0', label: 'Silver',   icon: '🥈' },
+  { name: 'Gold',     min: 1300, max: 1499, color: '#ffd700', label: 'Gold',     icon: '🥇' },
+  { name: 'Platinum', min: 1500, max: 1799, color: '#e5e4e2', label: 'Platinum', icon: '💎' },
+  { name: 'Diamond',  min: 1800, max: 9999, color: '#00ffff', label: 'Diamond',  icon: '👑' },
 ];
 
 // ── Match Config ──

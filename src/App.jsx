@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import useAuthStore from './stores/useAuthStore';
+import { useAuthStore } from './stores/useAuthStore';
 
 // Layout
 import AppShell from './components/layout/AppShell';
-import ProtectedRoute from './components/auth/ProtectedRoute';
+import { ProtectedRoute } from './features/auth/components/ProtectedRoute';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -16,9 +16,10 @@ import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
 
 /**
- * App — Root component with route definitions.
+ * Enterprise Application Routing Coordinator
+ * Composes domain shells mapped by role authorization constraints.
  */
-export default function App() {
+export const App = () => {
   const initialize = useAuthStore((s) => s.initialize);
 
   useEffect(() => {
@@ -48,8 +49,10 @@ export default function App() {
         <Route path="/profile" element={<ProfilePage />} />
       </Route>
 
-      {/* 404 */}
+      {/* 404 Fallback */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
-}
+};
+
+export default App;

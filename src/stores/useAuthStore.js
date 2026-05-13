@@ -18,6 +18,7 @@ export const useAuthStore = create((set, get) => ({
 
   /**
    * Initializes real-time persistent session listening.
+   * Guarantees absolute UI profile hydration before releasing visual loading boundaries.
    */
   initialize: async () => {
     try {
@@ -25,11 +26,14 @@ export const useAuthStore = create((set, get) => ({
       if (error) throw error;
       
       const user = session?.user ?? null;
-      set({ session, user, isLoading: false, loading: false });
+      set({ session, user });
       
       if (user) {
+        // Await profile payload hydration synchronously to prevent blank UI flickers on page refresh
         await get().fetchProfile(user.id);
       }
+      
+      set({ isLoading: false, loading: false });
     } catch (err) {
       console.error('Session initialization failure:', err);
       set({ isLoading: false, loading: false, error: err.message });

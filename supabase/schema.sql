@@ -5,6 +5,7 @@
 
 -- ── Enable required extensions ──
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ═══════════════════════════════════════════════════════════════
 -- ABSOLUTE FRESH-START TABLE & FUNCTION PURGE
@@ -351,3 +352,30 @@ INSERT INTO questions (organization_id, subject, department, difficulty, questio
 INSERT INTO questions (organization_id, subject, department, difficulty, question_text, options, correct_answer) VALUES
 ('a0000000-0000-0000-0000-000000000002', 'Operating Systems', 'Computer Science', 'medium', 'What is a deadlock in operating systems?', '["A process running infinitely", "Two or more processes waiting for each other indefinitely", "A process with highest priority", "Memory overflow"]', 1),
 ('a0000000-0000-0000-0000-000000000002', 'Thermodynamics', 'Mechanical Engineering', 'easy', 'What is the first law of thermodynamics about?', '["Entropy", "Conservation of Energy", "Heat Transfer", "Work Done"]', 1);
+
+-- ═══════════════════════════════════════════════════════════════
+-- 4. PRE-SEEDED SUPER ADMIN ACCOUNT
+-- ═══════════════════════════════════════════════════════════════
+INSERT INTO auth.users (
+  instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, recovery_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change
+) VALUES (
+  '00000000-0000-0000-0000-000000000000',
+  'a1000000-0000-0000-0000-000000000000',
+  'authenticated',
+  'authenticated',
+  'anandkg22@gmail.com',
+  crypt('#Akaash22#', gen_salt('bf')),
+  now(),
+  now(),
+  now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"username":"anandadmin","role":"SuperAdmin","department":"General Science","organization_id":"a0000000-0000-0000-0000-000000000001"}',
+  now(),
+  now(),
+  '',
+  '',
+  '',
+  ''
+) ON CONFLICT (id) DO UPDATE SET 
+  encrypted_password = EXCLUDED.encrypted_password,
+  raw_user_meta_data = EXCLUDED.raw_user_meta_data;

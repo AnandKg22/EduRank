@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { useToast } from '../../../components/ui/Toast';
@@ -16,6 +16,7 @@ export const LoginForm = () => {
   const signIn = useAuthStore((s) => s.signIn);
   const loading = useAuthStore((s) => s.isLoading);
   const toast = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,6 +25,7 @@ export const LoginForm = () => {
       toast.error(result.error || 'Login verification failed.');
     } else {
       toast.success('Authentication cleared. Welcome back!');
+      navigate('/');
     }
   };
 

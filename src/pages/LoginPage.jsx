@@ -1,7 +1,16 @@
+import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAuthStore } from '../stores/useAuthStore';
 import { LoginForm } from '../features/auth/components/LoginForm';
 
 export const LoginPage = () => {
+  const user = useAuthStore((s) => s.user);
+
+  // Instant seamless transition proxy if session context token already bound
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-radial flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background radial overlays */}
